@@ -1,44 +1,52 @@
-use std::ops::{Div, Mul};
+extern crate num;
+use num::{Num, NumCast};
 
+/// ```
+/// #use super::*;
+/// assert_eq!(Point{..Default::default()}, Point::new(0,0,0));
+/// ```
 #[derive(Debug, Default)]
-pub struct Point {
-    pub x: i32,
-    pub y: i32,
-    pub z: i32,
+pub struct Point<T> {
+    pub x: T,
+    pub y: T,
+    pub z: T,
 }
 
-impl Point {
-    pub fn new(x: i32, y: i32, z: i32) -> Point {
+impl<T> Point<T> {
+    pub fn new(x: T, y: T, z: T) -> Point<T> {
         Point { x, y, z }
     }
 }
-pub fn distance(a: &Point, b: &Point) -> i32 {
+
+pub fn distance<T: Num + NumCast>(a: &Point<T>, b: &Point<T>) -> usize {
     let x = b.x - a.x;
     let y = b.y - a.y;
     let z = b.z - a.z;
-    (((x * x) + (y * y) + (z * z)) as f32).sqrt() as i32
+    (((x * x) + (y * y) + (z * z)).to_f64().unwrap()).sqrt() as usize
 }
 
-pub fn center(a: &Point, b: &Point) -> Point {
+pub fn center<T: Num>(a: &Point<T>, b: &Point<T>) -> Point<T> {
+    let two = T::one() + T::one();
     Point {
-        x: (a.x + b.x) / 2,
-        y: (a.y + b.y) / 2,
-        z: (a.z + b.z) / 2,
+        x: (a.x + b.x) / two,
+        y: (a.y + b.y) / two,
+        z: (a.z + b.z) / two,
     }
 }
+
 #[derive(Debug, Default)]
-pub struct Vector {
-    pub x: i32,
-    pub y: i32,
-    pub z: i32,
+pub struct Vector<T> {
+    pub x: T,
+    pub y: T,
+    pub z: T,
 }
 
-impl Vector {
-    pub fn new(x: i32, y: i32, z: i32) -> Vector {
+impl<T: Num + NumCast> Vector<T> {
+    pub fn new(x: T, y: T, z: T) -> Vector<T> {
         Vector { x, y, z }
     }
 
-    pub fn from(a: &Point, b: &Point) -> Vector {
+    pub fn from(a: &Point<T>, b: &Point<T>) -> Vector<T> {
         Vector {
             x: b.x - a.x,
             y: b.y - a.y,
@@ -47,16 +55,16 @@ impl Vector {
 
     }
 
-    pub fn size(&self) -> i32 {
-        ((self.x * self.x + self.y * self.y + self.z * self.z) as f32).sqrt() as i32
+    pub fn size(&self) -> T {
+        T::from( (self.x * self.x + self.y * self.y + self.z * self.z).to_f64().unwrap().sqrt() ).unwrap()
     }
 
-    pub fn normalize(self) -> Self {
+    /* pub fn normalize(self) -> Self {
         let size = self.size();
         self / size
-    }
+    } */
 }
-
+/*
 macro_rules! mul_impl {
     ($($t:ty)*) => ($(
         impl Mul<Vector> for $t {
@@ -99,4 +107,4 @@ mod tests {
         assert_eq!(p.y, 0);
         assert_eq!(p.z, 0);
     }
-}
+}*/
