@@ -1,4 +1,5 @@
 extern crate num;
+use std::ops::{Div, Mul};
 use num::{Num, NumCast};
 
 /// ```
@@ -18,19 +19,25 @@ impl<T> Point<T> {
     }
 }
 
-pub fn distance<T: Num + NumCast>(a: &Point<T>, b: &Point<T>) -> usize {
+pub fn distance<'a, T>(a: &Point<&'a T>, b: &Point<&'a T>) -> usize
+where
+    &'a T: Num + NumCast,
+    T: Num + NumCast,
+{
     let x = b.x - a.x;
     let y = b.y - a.y;
     let z = b.z - a.z;
     (((x * x) + (y * y) + (z * z)).to_f64().unwrap()).sqrt() as usize
 }
 
-pub fn center<T: Num>(a: &Point<T>, b: &Point<T>) -> Point<T> {
-    let two = T::one() + T::one();
+pub fn center<T>(a: &Point<T>, b: &Point<T>) -> Point<T>
+where
+    T: Num + NumCast + Clone,
+{
     Point {
-        x: (a.x + b.x) / two,
-        y: (a.y + b.y) / two,
-        z: (a.z + b.z) / two,
+        x: (a.x.clone() + b.x.clone()) / T::one() + T::one(),
+        y: (a.y.clone() + b.y.clone()) / T::one() + T::one(),
+        z: (a.z.clone() + b.z.clone()) / T::one() + T::one(),
     }
 }
 
@@ -41,29 +48,58 @@ pub struct Vector<T> {
     pub z: T,
 }
 
-impl<T: Num + NumCast> Vector<T> {
+impl<T: Num + NumCast + Clone> Vector<T> {
     pub fn new(x: T, y: T, z: T) -> Vector<T> {
         Vector { x, y, z }
     }
 
     pub fn from(a: &Point<T>, b: &Point<T>) -> Vector<T> {
         Vector {
-            x: b.x - a.x,
-            y: b.y - a.y,
-            z: b.z - a.z,
+            x: b.x.clone() - a.x.clone(),
+            y: b.y.clone() - a.y.clone(),
+            z: b.z.clone() - a.z.clone(),
         }
-
     }
 
     pub fn size(&self) -> T {
-        T::from( (self.x * self.x + self.y * self.y + self.z * self.z).to_f64().unwrap().sqrt() ).unwrap()
+        T::from(
+            (self.x.clone() * self.x.clone() + self.y.clone() * self.y.clone() + self.z.clone() * self.z.clone())
+                .to_f64()
+                .unwrap()
+                .sqrt(),
+        )
+        .unwrap()
     }
 
-    /* pub fn normalize(self) -> Self {
+    pub fn normalize(self) -> Self {
         let size = self.size();
         self / size
-    } */
+    }
 }
+
+impl<'a, T: Num + NumCast + Clone> Vector<&'a T>
+where
+    &'a T: Num + NumCast,
+{
+    
+}
+
+impl<T: Num + NumCast + Copy> Mul<T> for Vector<T> {
+    type Output = Vector<T>;
+
+    fn mul(self, other: T) -> Vector<T> {
+            Vector {x: self.x * other, y: self.y * other, z: self.z * other}
+    }
+}
+
+impl<T: Num + NumCast + Clone> Div<T> for Vector<T> {
+    type Output = Vector<T>;
+
+    fn div(self, other: T) -> Vector<T> {
+            Vector {x: self.x / other.clone(), y: self.y / other.clone(), z: self.z / other.clone()}
+    }
+}
+
 /*
 macro_rules! mul_impl {
     ($($t:ty)*) => ($(
