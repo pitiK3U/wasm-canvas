@@ -2,6 +2,16 @@ use std::f64;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
+/// Module for analytic geometry in rust
+///
+/// # Examples
+///
+/// ```rust
+/// assert!(true);
+/// ```
+pub mod geometry;
+
+/// Documentation for library
 #[wasm_bindgen(start)]
 pub fn start() {
     let document = web_sys::window().unwrap().document().unwrap();
