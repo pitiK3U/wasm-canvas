@@ -92,7 +92,7 @@ where
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq)]
 pub struct Vector<T> {
     pub x: T,
     pub y: T,
@@ -211,5 +211,19 @@ mod tests {
         let p2 = Point::new(1f32, 1f32, 1f32);
         let dist = super::center(&p1, &p2);
         assert_eq!(dist, Point::new(0.5, 0.5, 0.5));
+    }
+    #[test]
+    fn vector_default() {
+        let v: Vector<i32> = Vector::default();
+        assert_eq!(v.x, 0);
+        assert_eq!(v.y, 0);
+        assert_eq!(v.z, 0);
+    }
+
+    #[test]
+    fn vector_new() {
+        let v1: Vector<i32> = Vector::default();
+        let v2 = Vector::new(0, 0, 0);
+        assert_eq!(v1, v2);
     }
 }
