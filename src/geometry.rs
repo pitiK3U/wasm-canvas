@@ -1,12 +1,50 @@
-extern crate num;
-use std::ops::{Div, Mul};
-use num::{Num, NumCast};
+//extern crate num;
+//use num::{Num, NumCast};
+use std::ops::{Add, Div, Mul, Sub};
+
+use std::any::Any;
+use std::any::TypeId;
+use std::fmt::Debug;
+
+/// The basic scalar type for all structures of `nalgebra`.
+///
+/// This does not make any assumption on the algebraic properties of `Self`.
+pub trait Scalar:
+    Copy
+    + PartialEq
+    + Debug
+    + Any
+    + Sub<Output = Self>
+    + Mul<Output = Self>
+    + Add<Output = Self>
+    + Div<Output = Self>
+{
+    #[inline]
+    /// Tests if `Self` the same as the type `T`
+    ///
+    /// Typically used to test of `Self` is a f32 or a f64 with `N::is::<f32>()`.
+    fn is<T: Scalar>() -> bool {
+        TypeId::of::<Self>() == TypeId::of::<T>()
+    }
+}
+impl<
+        T: Copy
+            + PartialEq
+            + Debug
+            + Any
+            + Sub<Output = Self>
+            + Mul<Output = Self>
+            + Add<Output = Self>
+            + Div<Output = Self>,
+    > Scalar for T
+{
+}
 
 /// ```
 /// #use super::*;
 /// assert_eq!(Point{..Default::default()}, Point::new(0,0,0));
 /// ```
-#[derive(Debug, Default)]
+#[derive(Debug, Default, PartialEq)]
 pub struct Point<T> {
     pub x: T,
     pub y: T,
@@ -17,27 +55,40 @@ impl<T> Point<T> {
     pub fn new(x: T, y: T, z: T) -> Point<T> {
         Point { x, y, z }
     }
+
+    pub fn x(&self) -> &T {
+        &self.x
+    }
+
+    pub fn y(&self) -> &T {
+        &self.y
+    }
+
+    pub fn z(&self) -> &T {
+        &self.z
+    }
 }
 
-pub fn distance<'a, T>(a: &Point<&'a T>, b: &Point<&'a T>) -> usize
+pub fn distance<'a, T>(a: &'a Point<T>, b: &'a Point<T>) -> usize
 where
-    &'a T: Num + NumCast,
-    T: Num + NumCast,
+    // &'a T: Scalar,
+    T: Scalar,
+    f64: std::convert::From<T>,
 {
     let x = b.x - a.x;
     let y = b.y - a.y;
     let z = b.z - a.z;
-    (((x * x) + (y * y) + (z * z)).to_f64().unwrap()).sqrt() as usize
+    (f64::from(((x * x) + (y * y) + (z * z)))).sqrt() as usize
 }
 
 pub fn center<T>(a: &Point<T>, b: &Point<T>) -> Point<T>
 where
-    T: Num + NumCast + Clone,
+    T: Scalar + std::convert::From<i8>,
 {
     Point {
-        x: (a.x.clone() + b.x.clone()) / T::one() + T::one(),
-        y: (a.y.clone() + b.y.clone()) / T::one() + T::one(),
-        z: (a.z.clone() + b.z.clone()) / T::one() + T::one(),
+        x: (a.x.clone() + b.x.clone()) / T::from(2),
+        y: (a.y.clone() + b.y.clone()) / T::from(2),
+        z: (a.z.clone() + b.z.clone()) / T::from(2),
     }
 }
 
@@ -48,7 +99,7 @@ pub struct Vector<T> {
     pub z: T,
 }
 
-impl<T: Num + NumCast + Clone> Vector<T> {
+impl<T: Scalar> Vector<T> {
     pub fn new(x: T, y: T, z: T) -> Vector<T> {
         Vector { x, y, z }
     }
@@ -61,86 +112,104 @@ impl<T: Num + NumCast + Clone> Vector<T> {
         }
     }
 
-    pub fn size(&self) -> T {
+    pub fn size(&self) -> T
+    where
+        f64: std::convert::From<T>,
+        T: std::convert::From<f64>,
+    {
         T::from(
-            (self.x.clone() * self.x.clone() + self.y.clone() * self.y.clone() + self.z.clone() * self.z.clone())
-                .to_f64()
-                .unwrap()
-                .sqrt(),
+            f64::from(
+                self.x.clone() * self.x.clone()
+                    + self.y.clone() * self.y.clone()
+                    + self.z.clone() * self.z.clone(),
+            )
+            .sqrt(),
         )
-        .unwrap()
     }
 
-    pub fn normalize(self) -> Self {
+    pub fn normalize(self) -> Self
+    where
+        f64: std::convert::From<T>,
+        T: std::convert::From<f64>,
+    {
         let size = self.size();
         self / size
     }
 }
 
-impl<'a, T: Num + NumCast + Clone> Vector<&'a T>
-where
-    &'a T: Num + NumCast,
-{
-    
-}
+/* impl<'a, T: Num + NumCast + Clone> Vector<&'a T> where &'a T: Num + NumCast {} */
 
-impl<T: Num + NumCast + Copy> Mul<T> for Vector<T> {
+impl<T: Scalar> Mul<T> for Vector<T> {
     type Output = Vector<T>;
 
     fn mul(self, other: T) -> Vector<T> {
-            Vector {x: self.x * other, y: self.y * other, z: self.z * other}
+        Vector {
+            x: self.x * other,
+            y: self.y * other,
+            z: self.z * other,
+        }
     }
 }
 
-impl<T: Num + NumCast + Clone> Div<T> for Vector<T> {
+/* impl<T: Num + NumCast + Copy> Mul<Vector<T>> for T {
+    type Output = Vector<T>;
+
+    fn mul(self, other: Vector<T>) -> Vector<T> {
+        Vector {
+            x: self * other.x,
+            y: self * other.y,
+            z: self * other.z,
+        }
+    }
+} */
+
+impl<T: Scalar> Div<T> for Vector<T> {
     type Output = Vector<T>;
 
     fn div(self, other: T) -> Vector<T> {
-            Vector {x: self.x / other.clone(), y: self.y / other.clone(), z: self.z / other.clone()}
+        Vector {
+            x: self.x / other.clone(),
+            y: self.y / other.clone(),
+            z: self.z / other.clone(),
+        }
     }
 }
 
-/*
-macro_rules! mul_impl {
-    ($($t:ty)*) => ($(
-        impl Mul<Vector> for $t {
-            type Output = Vector;
-
-            fn mul(self, other: Vector) -> Vector {
-                 Vector {x: (self * other.x as $t) as i32, y: (self * other.y as $t) as i32, z: (self * other.z as $t) as i32}
-            }
-        }
-
-        impl Mul<$t> for Vector {
-            type Output = Vector;
-
-            fn mul(self, other: $t) -> Vector {
-                 Vector {x: (self.x as $t * other) as i32, y: (self.y as $t * other) as i32, z: (self.z as $t * other) as i32}
-            }
-        }
-
-        impl Div<$t> for Vector {
-            type Output = Vector;
-
-            fn div(self, other: $t) -> Vector {
-                 Vector {x: (self.x as $t / other) as i32, y: (self.y as $t / other) as i32, z: (self.z as $t / other) as i32}
-            }
-        }
-    )*)
- }
-
-mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
-
 #[cfg(test)]
 mod tests {
-    use crate::geometry::Point;
+    use super::*;
     #[test]
-    fn it_works() {
-        let p = Point {
+    fn default_point() {
+        let p: Point<i32> = Point {
             ..Default::default()
         };
         assert_eq!(p.x, 0);
         assert_eq!(p.y, 0);
         assert_eq!(p.z, 0);
     }
-}*/
+
+    #[test]
+    fn point_eq() {
+        let p1: Point<i32> = Point {
+            ..Default::default()
+        };
+        let p2 = Point::new(0, 0, 0);
+        assert_eq!(p1, p2);
+    }
+
+    #[test]
+    fn distance() {
+        let p1 = Point::default();
+        let p2 = Point::new(1, 1, 1);
+        let dist = super::distance(&p1, &p2);
+        assert_eq!(dist, 1_usize);
+    }
+
+    #[test]
+    fn center() {
+        let p1 = Point::new(0f32, 0f32, 0f32);
+        let p2 = Point::new(1f32, 1f32, 1f32);
+        let dist = super::center(&p1, &p2);
+        assert_eq!(dist, Point::new(0.5, 0.5, 0.5));
+    }
+}
